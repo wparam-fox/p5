@@ -1,0 +1,45 @@
+=========================
+       runbox.dll
+=========================
+
+The p5 runbox is a fairly straightforward thing.  It's a box on your screen that you can type commands into.  It can be configured to stick to the top of the screen or float around as a tool window.  The commands you type into the runbox are the same commands you use anywhere else, with a few exceptions.  In the runbox, if a command does not begin with a '(' character, it is assumed to be the name of a program, and WON'T be parsed as an expression, instead it will be passed to ShellExecute.  You can run things like URLs and documents in addition to exe files.  If the string begins with a ! character, it is assumed to be a command for old pixshell, and will be forwarded to a release built pixshell.exe running on the same desktop.  This behavior is specific to the runbox and won't work in a script, for example.  (In a script you must use p5.util.propershell or p5.util.p3run)
+
+To open or close the runbox, use rb.show or rb.close.  Rb.toggle is equivalent to the old !run command.  Rb.isopen will tell you if the runbox is open or not (if you need to know that for some reason).  Rb.msrun will open up the standard ms runbox, the one you get if you choose "run" from the start menu.  Rb.activate will set focus to the runbox (usually a hotkey runs this command).
+
+-------------
+Configuration
+-------------
+
+The runbox supports the following functions to control settings:
+
+rb.limit - the runbox hard limit
+The runbox hard limit is the maximum number of characters that the code will retrieve from the runbox.  This is included to prevent a large memory allocation if a giant block of text is accidentally pasted into the box.  The default is 8192 bytes.  You should really be using a script if you're typing this much.  You can set this as large as you want.  Takes effect immediately.
+
+rb.floating - the runbox display mode
+This controls whether the runbox is a floating tool window (rb.floating 1) or anchored to the top of the screen (rb.floating 0).  This setting takes effect only when the runbox is first opened.  (Close and reopen it if you want to change it later.)
+
+rb.height - the height of the box
+This value is given in pixels, but it doesn't directly correlate to the full height of the window.  In anchored mode, the height is roughly 4 pixels greater than this value, in floating mode, it will depend on your settings for caption height.  The default value (16) was chosen to fit in caption bars of height 18, the only setting that should ever be used.  When you change this value, the new height of the box will take effect the next time the box is resized, however, the font will not be updated until the runbox is closed and reopened.  (Having the font and the height out of sync can result in odd display behavior.)  It is strongly recommended that you set this in your startup script, before you open the runbox, and then leave it alone.
+
+rb.ontop - runbox "always on top" status
+This controls whether the runbox will be kept on top of other windows.  More useful when the runbox is set to anchored mode than in floating mode.  This setting takes effect immediately.
+
+rb.inalttab - whether the runbox appears in the alt+tab list
+If you set this to 1, the runbox will appear in the alt+tab list of windows.  This is strongly recommended if you want to use it in floating mode.  This setting is only applied when the box is created; hide and show it again if it is already open.
+
+rb.allowclose - whether alt+f4 closes the runbox
+This setting controls whether the runbox can be closed by alt+f4 (or the close button in floating mode.)  This applies only to WM_CLOSE, rb.hide or rb.toggle will still close it as usual.
+
+rb.maxhistory - the maximum number of history entries
+This setting controls how many previous commands will be saved in the command history.  (Press page up and page down to scroll through the history.)  Commands that duplicate a command already in the history will not be added again.  (The command will be moved to the front of the list.)  The default is 50.  Note that if you set this value to less than the current number of history entries, the number will not decrease until the history is cleared.  Also see comments below about how the history is saved.
+
+rb.multiline - whether the runbox can extend to multiple lines
+By default, if you enter an incomplete p5 expression and press enter, the runbox will extend down to two lines and allow you to continue typing.  This makes it somewhat less painful to enter long commands with many sub expressions.  A problem was discovered with the history, where if you loaded a past command which was complete and wanted to go in and add another line, there was no way to do this without first removing the last ')' character.  If you forgot to do this, the command would be run, which is frequently a bad thing.  Because of this, enter ALWAYS inserts a new line, except when the cursor is at the end of the expression.  Pressing shift+enter will force the command to be parsed (if it is complete).  For people who wish not to bother with this, rb.multiline can be set to 0, forcing the runbox to always parse when enter is pressed.  If the line is incomplete, the runbox will display a message.
+
+----------------
+The history list
+----------------
+
+The runbox saves a list of commands executed to save time.  Press page up and page down to scroll through the list.  Rb.addhistory will add a command to the front of the history list, and rb.clearhistory will clear it.  The default maximum number of history entries that will be saved is 50, you can adjust this with rb.maxhistory.
+
+The important thing to note about the runbox history, and the thing about it which is somewhat unusual, is how to save it between p5 sessions.  The runbox will NOT save its history automatically; you must use the rb.savehistory command.  You give the rb.savehistory command the name of a file which will be created.  This file will be a p5 script containing rb.addhistory commands which will restore the history to its existing state the next time p5 starts.  In your shutdown.p5, add a save history command, such as (rb.savehistory "rbhistory.p5"), and then in startup.p5, read it in again, as in (p5.scr.run "rbhistory.p5").

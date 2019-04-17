@@ -1,0 +1,286 @@
+========================
+       instrument
+========================
+
+Instrument is the all-purpose api and window message hooking plugin.  It's called "instrument" because the main library used to hook the functions (called "detours", released by Microsoft Research) uses that word to describe what it does.  In retrospect, I probably should have picked a better word, but I'm not going to go back and change hundreds of occurences of that word in the source now, so "instrument.dll" it shall remain.  The most recent URL of the page where detours can be found at the time this info was written is:
+http://research.microsoft.com/sn/detours/
+
+However, the whole point of writing this plugin was so that I would NOT have to use that library directly anymore.  It is really a large pain in the neck to have to write a dll just to make a few basic changes to the call.  This plugin was written to handle most of the tasks I usually had to write a custom DLL to do, including the tedious task of writing function detours and trmapolines.
+
+This plugin is very flexible and powerful, you can use it to change or block (very nearly) any win32 api call, or any window message for any window.  Because of its flexibility, it is not very intuitive, some people will probably say "obtuse", others will probably say "impossible to figure out" or "useless".  It is what it is.  Hopefully this document can get those who wish to figure it out on the right track.
+
+This document is divided into the following sections:
+
+1.  Hooking to processes, setting instruments, removing instruments.
+2.  Action strings and how to create them.
+3.  Technical information.
+4.  Examples.
+
+Section 1 details what you need to know to use this plugin (with the exception of the actions), section 2 details actions, and section 3 has information on the underlying implementation, which is included mainly for those who have questions about the efficency of instrument.dll.  Section 4 has various examples which will hopefully illustrate useful operations as well as making action strings clearer.
+
+NOTE: Only ONE copy of p5 can load instrument.dll as a plugin at a time.  If you run multiple desktops, the p5 that runs each extra desktop will NOT be able to load this plugin.
+
+
+*-----------------------------------------*
+   Hooking, setting/removing instruments
+*-----------------------------------------*
+
+Before you can do anything to a process with instrument.dll, you must first "hook" that process, meaning you must load instrument.dll into its address space.  Any method you want to use to accomplish this will probably work (take note of the load order listed in the technical information section, though), however, most people will probably want to use functions provided by instrument.dll to make this an easy process.  The only function you should need to know is (i.hook.set).  Pass this function the pid of the process you want to hook, and it will attempt to do so.  If successful, it returns the pid it hooked (which is always the same as the pid you passed in).  An error is raised if the hook fails.  If the process is already hooked, i.hook.set considers it a success and returns the pid.
+
+The function i.hook.check will test to see if a process is hooked.  (i.hook.set uses this internally to decide whether to attempt the hook or not.)  If for some reason i.hook.check becomes confused, you can use i.hook.force to attempt the hook even if i.hook.check says the process is already hooked.  These two functions are included just in case; i.hook.set should be all you need in the vast majority of cases.
+
+(The reason i.hook.set returns the pid you pass in is so it can be used in calls to (i.set.*).  Examples in the following sections will illustrate this.)
+
+---------
+functions
+---------
+To hook, or "instrument" a function, you use i.set.function.  The function takes a pid, information about the function to hook, and actions to perform when the function is called.  i.set.function can only hook function that reside in dll's.  This is the case for most api's.  If for some reason you have the address of a function that is not exported by a dll, use i.set.address.
+
+pid - Simply, a pid of the process in which the instrument should be set.  Most of the time you will want to pass the return value of (i.hook.set) to this parameter, so that the process will also be automatically hooked if it isn't already.
+
+dll name - A string giving the name of the DLL that contains the function.  It can be a fully qualified pathname if necessary.  If the dll is not loaded into the target process, instrument.dll will load it.
+
+function name - A string giving the name of the exported function to hook.  Note that for many api functions (specifically, any one that takes a string) there are actually two exports, one ending in A for ansi strings, and one ending in W for wide (unicode) strings.  You need to know which the target process uses, or hook both to be safe.
+
+bool stdcall - An integer that gives the calling convention of the target function.  This parameter is 1 for __stdcall or __pascall, or 0 for __cdecl.  If this parameter is wrong, the target process will crash due to stack corruption.  All win32 functions (unless they take a variable number of arguments, like wsprintf) are __stdcall, so most of the time you will want to say 1 here.
+
+numparams - An integer that gives the number of parameters the function takees.  This is the number of 32 bit parameters, so if doubles or __int64s are being passed by value, keep in mind that they count as two parameters.  (This is generally not a concern for win32 api functions.)  Most of the time, simply counting the number of parameters the function takes gives the right answer.
+
+actions - The actions.  See section 3.
+
+The dll name, function name, stdcall flag, and numparams make up the "identity" of the instrument.  To remove the instrument later, you will need to give these exact same 4 parameters to i.unset.function.
+
+This function returns 1 if the request was aknowleged, or 0 if it was not.  (See technical information for how the message passing/aknowledgement works).  Sometimes, even if i.set.function returns 0, the instrument may still have become active.  Generally it is a good idea to terminate and restart the process, to correct whatever caused the message pass to be incomplete.
+
+To deactivate an instrument, use i.unset.function.  It takes a pid, and the same 4 identifying parameters that were passed to i.set.function.
+
+
+-------
+windows
+-------
+To hook a window, you use i.set.window or i.set.fullwindow.  I.set.window is just a shorthand for a call to i.set.fullwindow with the wParam, wMask, lParam, and lMask params set to zero (i.e. any value of wParam and lParam is allowed).  The parameters for i.set.fullwindow are as follows:
+
+pid - Pid of the process to instrument.  It must already be hooked when i.set.fullwindow is called (so using i.hook.set for this parameter is recommended).
+
+hwnd - Handle to window to instrument
+
+message - Value of the message to match
+
+wParam - wParam to match
+
+wMask - Mask applied to message's value before testing
+
+lParam - lParam to match
+
+lMask - Mask applied to message's value before testing
+
+actions - String of actions.  See section 3.
+
+When considering whether to run the actions, instrument.dll performs the following checks on the values contained in the MSG structure:
+
+if (message == msg.message && (msg.wParam & wMask) == wParam && (msg.lParam & lMask) == lParam)
+
+So, for example, if you want the actions to be run for any value of wParam, you would pass 0 and 0 for wParam and wMask (as i.set.window does).  If you want to match only messages with wParam == 57, you would pass 57 and 0xFFFFFFFF for wParam and wMask.
+
+The "identity" of a window message is made up of the six parameters hwnd, message, wParam, wMask, lParam, and lMask.  Those identical six parameters must be passed to i.unset.fullwindow to remove the instrument.
+
+This function returns 1 if the request was aknowleged, or 0 if it was not.  (See technical information for how the message passing/aknowledgement works).  Sometimes, even if i.set.function returns 0, the instrument may still have become active.  Generally it is a good idea to terminate and restart the process, to correct whatever caused the message pass to be incomplete.
+
+
+
+*-----------------------------*
+           Actions
+*-----------------------------*
+
+Figuring out how to set or unset an instrument and hook a process is the easy part.  The part that makes using instruments complicated is figuring out the actions and how to use them.  The language is modeled somewhat after various assembly languages.  Although the commands that take actions take a string, you will generally not want to form that string on your own.  The i.op.* functions exist to make this easier and more user friendly.  (Trust me.  Look at the output of the i.op commands if you doubt what I say.)  Each i.op command outputs a string that forms one command of the whole.  An action set is formed by stringing many i.op strings together.  Use of the "p5.util.strcatv" or "ss." functions are recommended.  A sample action string, that simply prints a message and then passes control onto the original api unmodified, could be formed like this:
+
+(ss.
+	(i.op.print "Random hooked api called!")
+	(i.op.run)
+)
+
+The output of that command is the string "f7 s25 Random hooked api called! f5 ", which you would pass to one of the i.set functions.  A slightly more complicated example, used to block calls to CreateFileW if the filename begins with "D:" is:
+
+(ss.
+	(i.op.sets Z "D:")
+	(i.op.mfpar B 0)
+	(i.op.cmpnsaw A B 2)
+	(i.op.jeq Done)
+	(i.op.sets A "d:")
+	(i.op.cmpnsaw A B 2)
+	(i.op.jeq Done)
+	(i.op.run)
+	(i.op.label Done)
+)
+
+which translates to "f37 v25 s2 D: f8 v1 i0 f27 v0 v1 i2 f29 i68 f37 v0 s2 d: f27 v0 v1 i2 f29 i68 f5 f6 i68 ".  (Told you the i.ops were less confusing.)
+
+
+------------------------
+   Action environment
+------------------------
+
+While an action is running, there are several areas that action ops operate on:
+1. Variables (i.e. registers)
+2. Global storage (an array of integers)
+3. Local storage (a string buffer)
+4. Parameters
+5. The 'return value'
+6. The 'condition register'
+
+In detail:
+1. Variables (registers)
+	There are 26 variables in the action 'machine', named A to Z.  They must be a capital letter.  When writing the i.op funcitons, you can pass an atom that is longer than 1 letter, any characters after the first are ignored, so 'A', 'Aerosmith', 'Assassinate' and 'Argopoo34**!' all reference the same variable.  All variables are initialized to 0 when the action begins executing.  It is up to you to keep track of what sort of data each variable contains, i.e. whether it is a pointer to an ansi string, a unicode string, a pointer to data, or just an integer.  I have tried to protect the runtime implementation from crashing due to bad pointers but not all errors can be caught.  Variables can be set to a literal value by i.op.set (for integers) or i.op.sets (for strings).  Unfortunately, due to the limitations of the p5 parser, there is no way to set a unicode literal as far as I know.  Variables are all identical, however, the runtime will only allocate enough space for variables A to the largest var used, so if you only use variables A and B, only 8 bytes need to be allocated, but if you use A and Z, 104 bytes need to be allocated, even though in both cases only two variables were used.  In general, you should err on the side of using variable names detailed enough that you can remember what they are for, even if that means skipping a few letters.
+
+2. Global storage
+	The "global variables" are accessed by index (starting from 0) by the function i.op.mfglob (move from global) and i.op.mtglob (move to global).  They are set to 0 when the instrument is set, and are not changed by the system after that.  No synchronization is provided by default, so multiple threads may operate on them at the same time.  The system determines, bases on the commands you enter, how many global variables you need and allocates space accordingly.  However, if you are using custom DLL functions (with i.op.calldll), you may need a way to specify more globals than are used by the i.op functions.  To force the system to allocate more space than seems necessary, use the i.op.numglobals command.  So, if you put (i.op.numglobals 3) in your action string, 12 bytes of global storage will be allocated, even if the only one that is ever accessed by other commands in the action string is index 0.  If you need to get a pointer to the array of globals (to store a string in global storage, for example), use the i.op.getglob command.  If you use i.op.getglob, be sure to put an i.op.numglobals in to ensure there is enough space.
+
+3. Local storage
+	The local storage is mainly intended to be used as a scratch buffer for translating strings between ansi and unicode.  Unlike the globals, there are no mfloc or mtloc functions.  The only way to access the local storage is with the i.op.getbuf command.  The size of the buffer is determined by the i.op.bufsize command.  If there is no i.op.bufsize command in the action string, the size defaults to zero and the i.op.getbuf command will return NULL.  Note that if there is more than one i.op.bufsize command in the action string, the LAST ONE IN THE STRING IS THE ONE THAT IS USED.  The buffer will be the size of the last bufsize command for the entire execution of the action.  I.op.getbuf is not evaluated at runtime, it is set when the instrument is created.  If you need to store integers in local storage, the i.op.store and i.op.load can provide this functionality.  Simply add to the return value of i.op.getbuf to store multiple integers.
+
+4. Parameters
+	"Parameters", in the context of an action string, mean the parameters given to the hooked function, if it is a function instrument, or to the window procedure if it is a window instrument.  The i.op.mfpar (move from parameter) and i.op.mtpar (move to parameter) commands are used to access parameters.  For a function, index 0 is the first parameter, 1 is the second, etc.  Accessing a function paramater index higher than the number of parameters the function has will return undefined results.  For a window instrument, parameter 0 is the window handle, 1 is the message, 2 is wParam, and 3 is lParam.  If your action string involves calling the hooked function or window procedure (using i.op.run), the contents of the parameters at the time i.op.run is called are what the function will see.  So, if you want to change the parameters to a function, you need to call i.op.mtpar BEFORE you call i.op.run, or else the i.op.mtpar will have no effect.
+
+5. The 'return value'
+	The return value refers to what the instrument processor will return to the caller, either the code that called the function or the window that sent the message.  When an instrument is started, it is initialized to zero.  When i.op.run is called, the return value is automatically set to whatever value the target function or window procedure returns.  I.op.mtret (move to return value) and i.op.mfret (move from return value) transfer variables into and out of the return value.  Think of the return value as another variable that you can't access directly.  If you want to modify the return value of a function (for example, to force a message box to always return "ok" no matter what the user pressed) be sure to use i.op.mtret AFTER i.op.run.  If you are not going to call i.op.run at all, you need to use i.op.mtret if you want to return something besides zero.  If you are forcing an API to always fail, it is recommended (but not necessary) that you also use i.op.sle (SetLastError ()) to set an appropriate value as the last error.  (5, or "access denied", is a good generic value.)  The main reason for using i.op.sle is that some code may become confused if GetLastError () returns success but the function did not work like it expected.
+
+6. The 'condition register'
+	The condition register can't be accessed directly.  It is in stead set by the various compare operations (i.op.cmp*), and read by the various jump operations (i.op.jmp*).  The register holds information to say whether the last comparison was less than, greater than, or equal to.  When the actions begin executing, it defaults to 'equal to'.  When you execute a jump operation (other than i.op.jmp, which always jumps) the operation checks the condition register to decide whether to jump.  So, if you say (i.op.jle foobar), the jump will occur if the condition register contains "less than" or "equal to", otherwise execution will continue at the next line.  Jump targets are defined by i.op.label.  Like variables, only the first character in the given atom is considered, however, you can use any character you want, not just A-Z.  Examples of using compares and jumps are in the examples section.
+
+
+----------
+operations
+----------
+
+The specifics of the various operations are all spelled out in detail in the help system, so I won't go into too much detail, but here is a (hopefully complete) list of the operations grouped by functional category:
+
+Arithmetic/basic memory access
+i.op.add, i.op.sub, i.op.mul, i.op.div, i.op.and, i.op.or, i.op.not, i.op.mov, i.op.load, i.op.store, i.op.set, i.op.inc
+
+Comparison/branch
+i.op.cmpi, i.op.cmps, i.op.cmpns, i.op.cmpsw, i.op.cmpnsw, i.op.cmpsaw, i.op.cmpnsaw, i.op.jmp, i.op.jeq, i.op.jne, i.op.jgt, i.op.jlt, i.op.jge, i.op.jle, i.op.label
+
+Global variables
+i.op.mfglob, i.op.mtglob, i.op.numglobals, i.op.getglob
+
+Local scratch buffer
+i.op.bufsize, i.op.getbuf
+
+String operations
+i.op.sets, i.op.strncat, i.op.strncatw, i.op.intncat, i.op.atow, i.op.wtoa, i.op.strstr, i.op.strstrw, i.op.upcase, i.op.upcasew
+
+Return value/parameter
+i.op.mfret, i.op.mtret, i.op.mfpar, i.op.mtpar, i.op.sle
+
+Input/Output
+i.op.print, i.op.prints, i.op.printsw, i.op.msgbox, i.op.msgboxw
+
+Other
+i.op.run, i.op.p5, i.op.calldll, i.op.slowcalldll
+
+An empty string ("") is a valid action string.  An instrument with this action string will immediately return 0 with no further processing.  (i.op.nop can also be used).
+
+
+
+*--------------------------------------*
+         Implementation details
+*--------------------------------------*
+
+To do.
+
+
+
+*--------------------------------------------*
+                  Examples
+*--------------------------------------------*
+
+Here are some practical examples of using instrument.dll.  Note that in all of these examples, I assume that the pid of the target process is 504.
+
+---------------
+Blocking an api
+---------------
+
+Simply blocking an api is probably the easiest thing to do.
+
+For example, let's say you want to prevent some process from calling CreateProcess.  First, note that CreateProcess takes text arguments, so is actually implemented as CreateProcessA and CreateProcessW.  Since we don't need to process anything, it's easier to just hook both rather than worry about which one the process uses.
+
+CreateProcess is a __stdcall function, and takes 10 parameters.  We'll use i.op.sle to set the last error to code 5, which is the code for access denied.
+
+The commands to do this are:
+(i.set.function (i.hook.set 504) "kernel32.dll" "CreateProcessA" 1 10 (i.op.sle 5))
+(i.set.function (i.hook.set 504) "kernel32.dll" "CreateProcessW" 1 10 (i.op.sle 5))
+
+Most API functions can be blocked with this same string of actions, though the number of parameters must obviously be ajusted to match the API in question.
+
+
+----------------------------------------------
+   Preventing a message box from displaying
+----------------------------------------------
+
+Another useful thing to do is to block message boxes that contain absolutely no useful information from being displayed.  I do this, for example, with the message box in ie5 that says "This page contains activex controls.  You disabled them.  OMG page not look right!" or something along those lines.  If you don't have ie5, or don't know or don't care what I'm talking about, you can substitute any message box.
+
+First, we have to figure out which MessageBox function we're after.  (There are six.  A, W, ExA, ExW, IndirectA, IndirectW).  For this task, the tool called dependency walker is your friend.  It comes with visual studio, and probably direct from microsoft, too.  Search your visual studio folder for "depends.exe".  Open the process you're looking at, select user32.dll, and see which message box function appears in the upper pane of the list.  This is probably the one you want.
+
+In my case, though, I can't tell this way, because the box is put up by some dll loaded by iexplore.exe.  So I have to make some instruments just to figure out what my target is.
+
+extras:
+how to figure out XxxxA versus XxxxW
+force all access to have FILE_SHARE_READ
+
+(i.set.function (i.hook.set 2240) "kernel32.dll" "CreateFileW" 1 7 
+(ss.
+	(i.op.bufsize 512)
+	(i.op.sets A "Allow?")
+	(i.op.getbuf B)
+	(i.op.atow B 512 A)
+	(i.op.mfpar D 0)
+	(i.op.msgboxw C D B 4)
+	(i.op.set E 6)
+	(i.op.cmpi C E)
+	(i.op.jne Done)
+	(i.op.run)
+	(i.op.label Done)
+)
+)
+
+
+block mesage boxes:
+(i.set.function (i.hook.set 2608) "user32.dll" "MessageBoxW" 1 4
+(ss.
+	(i.op.bufsize 512)
+	(i.op.sets A "Before you can print, you ")
+	(i.op.getbuf B)
+	(i.op.atow B 512 A)
+	(i.op.mfpar C 1)
+	(i.op.strstr D C B)
+	(i.op.set A 0)
+	(i.op.cmpi D A)
+	(i.op.jne 1path)
+	(i.op.run)
+	(i.op.jmp end)
+	(i.op.label 1path)
+	(i.op.set A 1)
+	(i.op.mtret A)
+	(i.op.label end)
+))
+
+
+(i.set.function (i.hook.set (pid foo)) "kernel32.dll" "GetVersion" 1 0
+(ss.
+(i.op.print "called")
+(i.op.set A 7)
+(i.op.mtret A)
+)
+)
+
+(i.set.function (i.hook.set (pid foo)) "kernel32.dll" "GetVersionExA" 1 1
+(ss.
+(i.op.print "called 2")
+(i.op.run)
+(i.op.mfpar A 0)
+(i.op.set B 8)
+(i.op.add A B)
+(i.op.set C 1)
+(i.op.store A C)
+)
+)

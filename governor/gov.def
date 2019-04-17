@@ -1,0 +1,4 @@
+LIBRARY	governor BASE=0xF00000
+	
+SECTIONS
+	govfoo read write shared

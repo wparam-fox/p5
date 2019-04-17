@@ -1,0 +1,11 @@
+Thoughts on the threading model of p5:
+
+The p5 threading model can be easily summed up with the sentance "p5 is a single threaded program, except for when it isn't."
+
+The general idea is that everything happens in one thread, except for the times when stuff needs to happen in the background or things need to take a long time, in these cases, a background thread is used.  The debug console uses its own thread, this is an anomaly, normally no other parser should have to do this.
+
+When writing p5 functions and plugins, you have to assume that the user is going to be calling them from multiple threads at the same time, because this can happen, even if it's not terribly likely.  The threading model may change in the future, making concurrency much more likely.  A thread can use PlIsMainThread to detect whether it's being run by a background thread; functions are welcome to fail based on this info.  (Indeed, if your code creates windows, it SHOULD fail for this reason, as background threads do not have message loops.)
+
+Things run with bg.sync work in a stack fashion, i.e. if a bg.sync'd command comes in while one is already pending, the first expression, even if it completes, will be blocked until the second one completes.  THis is an artifact of the single-ish threaded nature of the program.  I do not think this needs to be changed.  The way windows makes it work makes it very difficult to have multiple threads that all create windows.  (Because no matter what scheme you use, only the thread that made a window can work with it, so if I tried to have one thread per parser, or a message loop by default in every thread, then we'd have the problem of how to dispatch commands like runbox.close to the right thread, and in the end we're context switching all the damn time for what looks to me like very little reward.)
+
+In the end, the "a working program with a stupid thread model is better than no program at all" mentality won out.  This is the design.  p6 can fix things if this turns out to be too horrific.

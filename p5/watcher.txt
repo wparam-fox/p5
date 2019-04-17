@@ -1,0 +1,11 @@
+=======================
+        Watchers
+=======================
+
+The concept of "watchers" refers to something which keeps track of handle type data through the parsing system.  For example, the functions that operate on icons cannot reasonably return the binary data through all the places it needs to go; they have to just return an HICON.  If that HICON goes astray, the data will be leaked.  Watchers exist to at least keep track of such items.  Anytime something is returned (usually as a 'type') to the parser, a watcher is added.  As soon as something is parsed out of a type, the watcher is removed.  If something goes wrong along the way, there is at least a record of it.
+
+Note that this is absolutely *NOT* any form of garbage collection.  None at all.  It's a way to spot leaks in scripts you write so that proper action can be taken to ensure that they don't happen in the future.
+
+Normally, there is no reason to consider these things.  They are created and destroyed normally as part of some script actions.  p5.wat.dump lists them out to the console.  If life is good, you should see none.  If you find the need to add one in a script you are working on, p5.wat.add and p5.wat.delete give you the access you need.  Watches added with these functions will be assigned a type of "script".  Note that you shouldn't use p5.wat.delete to remove things your script didn't add; this is the wrong way to handle it; doing so will result in a leak.  Figure out what function accepts it and pass it there.  There should be a "delete" function for every different type that can leave watchers behind.
+
+Longer rant:  In the end, I decided that it's just not conceivable to try to track references to things.  Even the most elaborate system would not be able to know for sure that things could safely be deleted.  This is a cop-out, no question, but I am tired of holding up development over this.  If it turns out that there is a case where leaks happen and there is insufficient error handling capability to deal with it, then the problem should be addressed there, not with reference counting.  It just plain is not worth the insane amount of effort it would take at this point.

@@ -1,0 +1,38 @@
+==================================
+    p5 command line parameters
+==================================
+
+P5 accepts the following command line parameters:
+
+--help
+    Displays this information in a message box
+
+--runconsole pro,in,out,event
+    Used internally to start p5 as a console front.
+
+--debugconsole
+    Opens the in-process console at startup.
+
+--stressparser
+    Runs a stress test on the parser, looking for memory leaks.
+
+--nomailslot
+    Does not attempt to open the remote command mailslot
+
+--mailslotname [name]
+    Overrides the default remote control mailslot name.
+
+--parse [string]
+    Passes [string] to the remote parse mailslot (This must be the last paramater on the command line.
+
+--directory [string]
+    Sets the current directory of p5 to [string]
+
+--startupscript [string]
+    Sets the name of the file p5 will run on startup
+
+--shutdownscript [string]
+    Sets the name of the file p5 will run on shutdown
+
+--mainwindowtitle [string]
+    Sets the title of the p5 main window

@@ -1,0 +1,49 @@
+
+(define.root 'bt "vii;$1;$2" 
+ '(begin
+	'(cprint "bt enter\n")
+	'(# error.skip err)
+	'(cprint (va "%i\n" (+ 0 (if (== $1 1) '1 'ass))))
+	'(# label backo)
+	'(cprint "bt 2\n")
+	'(# return)
+	'(# label err)
+	'(cprint "error occured\n")
+	'(# goto backo)
+  )
+  "" "" ""
+)
+
+(# return)
+
+
+
+(# label foo)
+(cprint "START OF FILE\n")
+(# paramcount 2)
+(define.full 'pint "vi;int" '(cprint (va "%i\n" int)) "" "" "")
+(# error.skip err)
+
+(cprint (va "%i\n" (+ 
+
+(# comment.in)
+foo!
+Random crap that shouldn't parse )(""))())"()("()")("()")(")(
+(# comment.out)
+
+4 3)
+)
+)
+
+(pint 234)
+
+(# base)
+(cprint "pre error\n")
+(cprint (va "%i\n" (+ $1 $2)))
+(# label backagain)
+(cprint "post error\n")
+(# return)
+
+(# label err)
+(cprint (va "Error ]%s[" lasterror))
+(# goto backagain)

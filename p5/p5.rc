@@ -1,0 +1,182 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_APPICON             ICON    DISCARDABLE     "appicon.ico"
+IDI_P5DOC               ICON    DISCARDABLE     "p5doc.ico"
+IDI_FUNCTION            ICON    DISCARDABLE     "function.ico"
+IDI_DEFINE              ICON    DISCARDABLE     "define.ico"
+IDI_ALIAS               ICON    DISCARDABLE     "alias.ico"
+IDI_INFO                ICON    DISCARDABLE     "info.ico"
+IDI_VARIABLE            ICON    DISCARDABLE     "variable.ico"
+IDI_FOLDER              ICON    DISCARDABLE     "folder.ico"
+IDI_HELPWIN             ICON    DISCARDABLE     "helpwin.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_HELPWIN DIALOGEX 0, 0, 390, 214
+STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "p5 help window"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    CONTROL         "Tree1",IDC_TREE,"SysTreeView32",TVS_HASBUTTONS | 
+                    TVS_HASLINES | TVS_DISABLEDRAGDROP | WS_TABSTOP,7,7,96,
+                    179,WS_EX_CLIENTEDGE
+    EDITTEXT        IDC_DESCRIPTION,124,27,235,39,ES_MULTILINE | ES_READONLY | 
+                    WS_VSCROLL
+    GROUPBOX        "Description",IDC_DESCRIPTION_BORDER,119,17,244,53
+    EDITTEXT        IDC_USAGE,123,86,240,39,ES_MULTILINE | ES_READONLY | 
+                    WS_VSCROLL
+    GROUPBOX        "Usage",IDC_USAGE_BORDER,119,77,248,49
+    EDITTEXT        IDC_MORE,125,156,229,37,ES_MULTILINE | ES_READONLY | 
+                    WS_VSCROLL
+    GROUPBOX        "More Info",IDC_MORE_BORDER,121,144,244,54
+    EDITTEXT        IDC_SEARCHBOX,7,196,67,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "Filter",IDC_FILTER,82,196,23,11
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_HELPWIN, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 383
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 207
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// INFO
+//
+
+IDR_SCRIPTHASH          INFO    DISCARDABLE     "scriptha.txt"
+IDR_SCRIPT              INFO    DISCARDABLE     "script.txt"
+IDR_COMMANDLINE         INFO    DISCARDABLE     "commandline.txt"
+IDR_WATCHER             INFO    DISCARDABLE     "watcher.txt"
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "The 5th version of Pixshell, now known as p5\0"
+            VALUE "CompanyName", "wSoft\0"
+            VALUE "FileDescription", "p5\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "The p5 windows shell\0"
+            VALUE "LegalCopyright", "Copyright © 2006\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "p5.exe\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "wSoft p5\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,75 @@
+=======================
+       monitor
+=======================
+
+"Monitor" is the somewhat less-than-useful name that has been given to the system of using the pause key to trigger commands, as an alternative to regular hotkeys.  The name stems from the name of the plugin dll from old pixshell (monitor.dll).  I'm sticking with 'monitor' as the name of this feature, because I think 'pause keys' isn't much better.
+
+Anyway, the basic idea is that it is easier to remember one letter (or a small string of letters) than it is to remember one letter and some arbitrary set of modifier keys.  The monitor system uses one 'activator' key to signal that the next few keys should be taken out of the input stream and instead used to run some program.  The activator key is the pause key by default, but this can be changed.  (Note: This document uses "pause key" and "activator" interchangably.  If you change the activator to a different key, just remember that you have to press that instead of pause.)  A brief example can be found at the end of this document.
+
+Monitor is started with kb.mon.start and stopped with kb.mon.stop.  Kb.mon.add and kb.mon.del add and remove specific keystrokes.  Kb.mon.reset clears the entire database, and kb.mon.dump lists the database on the console.
+
+-------------
+Configuration
+-------------
+
+The following configuration functions are supported:
+
+kb.mon.maxlen - Maximum pause string length
+This is the longest possible string that the monitor system will accept.  If the number of keys typed after a pause exceeds this amount without hitting either a match or a failure, the string is automatically failed.
+
+kb.mon.activekey - Set the 'activator' key
+This is pause by default.  Use kb.vk to translate a normal key into an integer for this function.
+
+kb.mon.abortkey - Set the 'abort' key
+The abort key is a key that will always cause the current string to fail, returning input processing to normal.  You would press this key if you accidentally pressed a wrong key and needed to start over.
+
+kb.mon.permits - Set the number of permits
+Permits refers to the number of times the activator key will be allowed to pass through to other apps.  Normally, the activator is always removed from the stream.  Sometimes you may find you need to allow it through once.  To do that, you would set kb.mon.permits to 1.  This feature was added because putty interprets the pause key to mean "suspend the current job", which caused me more than one failed burn from accidentally suspending cdrecord.
+
+kb.mon.drawing - Controls drawing of keys
+The monitor system will, by default, output the keys you type in the upper left corner of the screen.  This drawing is done with complete disregard for anything that might be there, and it is not cleared when a sequence is complete.  If this bothers you, turn it off with kb.mon.drawing.  Letters appear in white until either a match is found or the typed sequence definitely doesn't match anything, when the text will turn green or red, respectively.
+
+
+-------
+Example
+-------
+
+Monitor is something that is much easier to explain by example.  Assume the following commands were typed in the runbox, or in a startup script, or what have you:
+
+(kb.mon.add "N" '(p5.util.propershell "notepad"))
+(kb.mon.add "I" '(p5.util.propershell "iexplore"))
+(kb.mon.add "U I" '(p5.util.propershell "firefox"))
+(kb.mon.add "U # P" '(cprint (va "%i" $1)))
+(kb.mon.add "B * ENTER" '(cprint (va "%s" (s $1))))
+(kb.mon.start)
+
+After entering the above commands, here are some examples of keystroke sequences and what will happen.  Note that each of these keys should be pressed AND RELEASED.  Do not hold down pause while you press the next keys.  That is not how monitor is supposed to work.
+
+[PAUSE] [N]
+You will see the string "N" in green in the upper right of the screen (if drawing is enabled) and notepad will be run.
+
+[PAUSE] [A]
+You will see "A" in red appear, because "A" does not match any strings in the database.
+
+[PAUSE] [U]
+You will see "U" in white appear.  "U" is a partial match to either "UI" or "U#P".  Because the letters are in white, the next key will also be taken out of the input stream and applied to the pause string.  (So if you press [I] next, firefox will be run, as in the following example)
+
+[PAUSE] [U] [I]
+You will first see "U" in white appear, followed by "UI" in green, and firefox will be run.  (Note: You will need to enter the valid path, unless firefox.exe is in your path.)
+
+[PAUSE] [U] [X]
+You will see "U" in white, followed by "UX" in red, because "UX" definitely doesn't match anything in the database.
+
+[PAUSE] [U] [1] [3] [4]
+You will see "U134" printed in white.  The "#" in the string means that the monitor system will accept any number of digits, and will form an integer out of them which can be access by the expression using "$x", where x is the number of the #, starting from 1.  # cannot be the last character in the string, and two # cannot follow each other directly.  At this point, if you press a letter other than [P], the expression will fail.  If you press [P] at this point, "134" will be printed to the console.
+
+[PAUSE] [B] [F] [A] [V]
+Similar to # is *, which matches any number of keys.  * only ends when the key that comes after it is pressed.  In this case, you will see "BFAV" printed in the corner.  The pause system will keep eating your keystrokes until it sees the key after the *, which is [ENTER] in this case.  (It will also stop if you hit the abort key, or exceed the maximum length.)  * was added for completeness.  It is somewhat less useful than you would think at first, because you can't do things like type lowercase letters, and any non-printing characters are sent by virtual keycode, meaning you will get odd and seemingly random results if you try to use * with keys that aren't letters.
+
+
+You need to use some caution with # and * to make sure you don't create a conflict.  If two commands end up being potentially the same, the results are undefined and will depend on the order the commands were added.
+
+For example, if you have monitors defined with the following key strings:
+"U # S"
+"U 3 S"
+you have created a conflict, because a press of [PAUSE] [U] [3] [S] matches both of those strings.  If "U # S" appears in the list before "U 3 S", then "U 3 S" will never be triggered, even if you press [U], [3], and then [S].  No error or feedback information will be generated if this situation is created, so be careful when adding monitors with * or #.  I recommend having one key that begins all #/* monitors, which is used for no other purpose.

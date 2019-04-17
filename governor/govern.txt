@@ -1,0 +1,103 @@
+=============================
+        The Governor
+=============================
+
+"Governor" is the new version of the old p3 plugin known as "govern.dll".  The point of that old plugin was to execute p3 commands when various things happened in the system.  It was supposed to support window create, window delete, window activation, and single-shot window activation.  In practice, the only ones that seemed to work were the two activation groups, and even those only worked when keyed on window classes.  Plus, the whole thing was based on the registry.  It was screaming to be redone.
+
+The new version supports seven groups of governors, and each works when keyed on either title or window class, though the "create" group has some caveats when used with window titles--see below.  Desktops are also taken into account; by default, each desktop needs to load governor.dll, and needs to define its own set of governors to run.
+
+Use of a "governor.p5" type script is highly recommended so that all desktops can have the same set of actions.  It is possible to configure the governor to send all commands to one desktop (like hotkeys), but this is not recommended.
+
+
+*--------------------------*
+        Startup/use
+*--------------------------*
+
+General concept is 1) Start governor, 2) define governor actions.  Actions are detailed in the next section.
+
+There are three functions that start the governor.  Generally speaking, use (gov.continue).  It works best across the widest spectrum of circumstances.
+
+Complicated explanation about why:
+Governor uses shared memory sections to store the actions.  This buffer is created the first time the governor is started.  After creation, a windows hook is set.  This hook causes governor.dll to be loaded into other processes.  When loaded into another process, governor.dll will not free the handle to the section until it is unloaded from the process (this makes the hook procedure take less time to execute).  But, since removing the windows hook does not always cause the dll to be unloaded from all programs right away, sometimes a handle to the section will remain after (gov.stop) is executed.  This situation is why (gov.start) often fails if p5 has to be reloaded.
+
+There are three general parts to the governor--The shared memory section, the mailslot to receive commands, and the hook itself.
+
+Specific actions for each of the three start functions:
+(gov.start) - Creates the section, fails if it exists.  Creates the mailslot, fails if it exists.  Sets the hook, fails if it can't be set.
+
+(gov.startshare) - Creates the section, using a pre-existing one if it exists.  Does *NOT* create a mailslot.  Sets the hook, fails if it can't be set.  For this function to work, (gov.cfg.usedesks) must be set to zero on ALL desktops, and (gov.start) or (gov.continue) must already have been called on one (and only one) desktop.  This function will cause governor actions from the desktop it is run on to be forwarded to the desktop that ran (gov.start).  This results in governors acting like hotkeys, where you have to do special things to get programs to run on the proper desktop.  Generally this is not what you want.  The reason this function has to exist is that hooks in windows are per-desktop, so the second desktop has to have its own hook, even if all desktops are sharing the same memory section and command processor.
+
+(gov.continue) - Creates the section, using a pre-existing one if it exists.  Creates the mailslot, fails if it exists.  Sets the hook, fails if it can't be set.  This function is a more useful replacement for (gov.start), which opens an existing section if one is found.  This condition is common if p5 was shut down and then immediately restarted.  The section "should" contain valid data, however, calling (gov.flush) immediately is recommended.  Make sure that the default size (gov.cfg.defsize) is set properly before you use this function--it needs to match the size of the section that exists.  As long as you always call (gov.cfg.defsize) before (gov.continue), you should be fine.
+
+
+Other functions worth noting:
+(gov.stop) - Stops the governor on the current desktop.  Note that the section will not be completely cleared up until governor.dll is removed from all other processes.  This may not happen until every process that governor.dll was loaded into undergoes some sort of action that would have triggered the hook.  Normally, if you use (gov.continue), this will not be an issue.
+
+(gov.kill) - Stops the governor on the current desktop, forcefully if necessary.  This is like using (p5.plg.kill), that is, it will (at minimum) leak the memory used by the governor thread's stack.  Avoid it whenever possible; (gov.stop) does exactly the same job without leaking resources.
+
+(gov.flush) - Immediately clear out all actions in the governor buffer.  This is the preferred way to clear everything if you want to do that (for example, at the start of a common script that sets all of your governors).  A stop/start cycle of the governor will accomplish the same task, but is much more resource intensive and is subject to the headaches associated with (gov.start) noted above.  (gov.continue) does NOT imply (gov.flush), unless coincidentally the governor buffer was clear before (gov.continue) was run.
+
+(gov.dump) - Dumps the buffer to the p5 console.  The output is terse, and not really meant to be human readable.  One of the columns is the flags, and things with a flag value of 1 are disabled.  (Things are never removed from the buffer, they are just flagged as disabled.  This made code easier.  Entries are re-used if they can be.)
+
+
+------------------------
+     Configuration
+------------------------
+
+This section covers configuration entries other than the action manipulation functions.
+
+
+(gov.cfg.debug) - This controls the debug level.  Default: 0.  This controls the level of info sent to OutputDebugString by copies of governor.dll running in other processes.  3 is currently the useful max.  This can sometimes give a clue as to why things are not working.  Useful for debugging, mainly.  Beware of clicking on the DebugView window when this is set--Older versions of DebugView do not like being made to print their own output.
+
+(gov.cfg.defsize) - This sets the size of the governor buffer.  Current default is 8192 bytes.  If you're finding that you're getting "out of space" errors a lot, raise this number up before you start the governor.  If you have changed this value, using (gov.continue) is likely to cause you problems.  Use (gov.start), and if that function complains and won't go, click on all of your windows and hope it works on a second try.
+
+(gov.cfg.freespace) - Returns the number of bytes left in the governor shared memory section.
+
+(gov.cfg.name) - Do not use this function.  The name is not shared out to other processes, and will almost certainly not work.  I'm not sure why it's still in here as something you can change.
+
+(gov.cfg.print) - Boolean value, controls whether every governor that is run produces output to the p5 console.  Hotkeys and monitors have a similar facility.  Useful if you want to see if your governor is triggering or not.
+
+(gov.cfg.showhits) - Boolean value, controls whether every possible governor hit is printed to the debug window.  This results in a line for every window create, activation, deletion, etc.  This can be useful for determining what the title of a window is at creation time, for example.  Requires DebugView or some similar tool to view OutputDebugString() output.
+
+(gov.cfg.size) - Returns the current size of the governor buffer.  Throws an error if the buffer does not claim to be the same size p5 expects it to be.
+
+(gov.cfg.usedesks) - In simple terms, this controls whether the name of the current desktop is inserted into the memory segment and mailslot names.  It defaults to 1, and you should leave it that way.  In this mode, every desktop needs to load governor.dll and start the governor.  Each desktop also needs to define its own actions.  A common script that all desktops can run is recommended.  When governor actions are triggered, they are handled by the p5 on their desktop, which is generally the right action.  If you want all governor actions to be run by the copy of p5 on one desktop, follow these steps:
+1) Start p5 on target desktop
+2) Set (gov.cfg.usedesks) to zero
+3) Run (gov.start) or (gov.continue) on target desktop
+4) Start p5 on other desktops
+5) Set (gov.cfg.usedesks) to zero
+6) Run (gov.startshare) on other desktops
+This will send all governors to the target desktop, no matter which desktop they came from.  Also, all desktops will have an identical, shared, set of governor actions.  Meaning, you will have to have a lot of (sl.desk.runcur) to forward the commands back to the current desktop.  Windows hooks are per-desktop, and are meant to live and work on the desktop that spawned them; normally it's easiest to just use them this way.
+
+
+-----------------------
+       Actions
+-----------------------
+
+Each action type has three functions, add, get, and delete.  For most categories below, there are three different types of keys, class, title, and all, meaning the window class name, window title, and all windows, respectively.  A tool like spy++, or even (gov.cfg.showhits) can help in determining the value to use.  All keys are case sensitive.
+
+When an action is called, the HWND that tripped it is bound to the variable "G1".  It's bound to that because someday, I hope to have other governor types which can provide more than one parameter.
+
+There are also "deny" types, with the same three subtypes.  The deny governors prevent the given action from happening.  For example, if you set a deny on create for the class "EDIT", you won't get any edit boxes on your system.  Yes, this can be dangerous; use with care.  Much safer (and more useful) would be the movesize deny.  Setting movesize.deny.all is a good thought if you're about to change the resolution and you don't want anything to move.
+
+**NOTE NOTE WARNING**: The "all" key type is always to be treated with the utmost respect and care!  Setting something on create or destroy all is likely to be a drain on system resources.  Setting a deny all on anything may have unintended consequences.  YOU ARE ON YOUR OWN.  Make sure you TEST whatever madness you're contemplating before you save it into your startup scripts!  YOU HAVE BEEN WARNED!
+
+Add, get, and delete all fail if the governor is not enabled.  Get returns an atom representing the action associated with a given type and key, or an error if none is defined.
+
+
+Types:
+
+activate - Triggers on window activation.  In general this means a window being brought to the foreground, whether by a click, alt+tab, taskbar, or whatever.
+
+actone - Triggers on window activation, but only the first time.  This hook is most useful when "create" isn't working for some reason.  (The state a window is in when a "create" governor triggers is a little odd, and trying to interact with windows in this state sometimes produces odd results.).  This type does not have deny or all rules.
+
+create - Triggers on window creation.  Note that the title of a window being created is not always established, nor is it always the same as the title the window has when it appears on your screen for you to see.
+
+destroy - Triggers on window destruction.  Denying this can have "interesting" results.  Deny with care.
+
+minmax - Triggers when a window is minimized or maximized.
+
+movesize - Triggers when a window is moved or sized.  Note that the trigger only happens once for the move or size operation, even if you have "show window contents when dragging" selected.
+
+setfocus - Similar to activate, but much more common, as it triggers for child windows as well.  You probably want to use activate instead.

@@ -1,0 +1,9 @@
+LIBRARY	instrument BASE=0xE00000
+
+EXPORTS
+	AgnInstrumentationListener
+
+	
+	
+SECTIONS
+	shfoo read write shared

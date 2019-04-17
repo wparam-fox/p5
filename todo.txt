@@ -1,0 +1,16 @@
+To do:
+
+Make sure you can define a function to do bitwise or and and on 64 bit ints.
+
+Update the define function running function!  Needs to handle [t] now!
+
+Convert functions for the general type case
+^^ Make these in conjunction with the SD manipulators.
+
+SD is a special case; since it CANNOT be created by the user, put a checksum
+in it, in addition to the data.  stdlib.dll will have to do this.
+
+Array functions.
+Inside to convert string arrays to TYPEs, script functions to break arrays
+i64 convert from and to
+

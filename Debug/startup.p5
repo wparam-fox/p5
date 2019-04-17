@@ -1,0 +1,73 @@
+
+//ignore errors because sometimes the debug console is open
+(# error.cont)
+(console.open)
+(# error.abort)
+
+//(p5.info.list)
+
+(p5.dbg.report)
+//(par.rt.define 'q "v" '(quit.force) "" "" "")
+(par.rt.alias 'q "v" 'p5.forcequit)
+
+(load "runbox.dll")
+(load "keyboard.dll")
+(load "stdlib.dll")
+(load "video.dll")
+(load "wic.dll")
+
+(script "rbhist.p5")
+
+//(tf)
+(rb.show)
+
+(par.rt.alias alias "vasa" 'par.rt.alias)
+(alias monitor "vsa" 'kb.mon.add)
+
+//(kb.startmonitor)
+(monitor "Q" '(cprint "Q!\n"))
+(monitor "B * ENTER" '(cprint (va "%s\n" $1)))
+(monitor "A # ENTER" '(cprint (va "%i\n" $1)))
+(monitor "C # , # , # ENTER" 
+'(cprint 
+(va "%i,%i,%i\n" $1 $2 $3)
+)
+)
+//(kb.mon.start)
+//(load "instrument.dll")
+
+
+(par.rt.bind BOB "0x530472")
+
+//(load "governor.dll")
+//(gov.cfg.debug 3)
+//(gov.cfg.print 1)
+
+(par.rt.helpwin)
+
+(par.rt.bind 'VIMWIN "0")
+(par.rt.define 'sl.win.icon.change.vim "vi;INHWND"
+	'(begin
+		'(par.bind 'CURVAL (s VIMWIN))
+		'(par.rt.bind 'VIMWIN (s (% (+ VIMWIN 1) 9)))
+		'(if (== CURVAL 0) '(par.bind 'SHIFT (s -120.0)) '())
+		'(if (== CURVAL 1) '(par.bind 'SHIFT (s -80.0)) '())
+		'(if (== CURVAL 2) '(par.bind 'SHIFT (s -40.0)) '())
+		'(if (== CURVAL 3) '(par.bind 'SHIFT (s 0.0)) '())
+		'(if (== CURVAL 4) '(par.bind 'SHIFT (s 40.0)) '())
+		'(if (== CURVAL 5) '(par.bind 'SHIFT (s 80.0)) '())
+		'(if (== CURVAL 6) '(par.bind 'SHIFT (s 120.0)) '())
+		'(if (== CURVAL 7) '(par.bind 'SHIFT (s 160.0)) '())
+		'(if (== CURVAL 8) '(par.bind 'SHIFT (s 200.0)) '())
+		'(p5.con.print (ss (s SHIFT) "=SHIFT\n"))
+		'(sl.win.icon.set INHWND 
+			(sl.dicon.rotatecolor 
+				(sl.dicon.color (sl.dicon.hwnd INHWND) 0x008000 0x00C000)
+			120.0 0.1 SHIFT)
+		)
+	)
+	"something" "i:val" "crap"
+)
+
+
+

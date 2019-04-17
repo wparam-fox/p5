@@ -1,0 +1,13 @@
+=========================
+     p5 script files
+=========================
+
+The p5 script format is fairly basic.  Each line is read in one at a time and passed to the parser.  The parser handles multiline commands and executes commands when it has a complete one.  Note that the buffer used to read in each line is only 1024 characters, so you should try to avoid having lines longer than that.  Also note that even though a command can span multiple lines, two commands on the same line are NOT supported, and will result in a script that behaves in a way you didn't intend (so don't do it).
+
+Single line comments begin with "//".  The // must be the first character on the line.  Multiple line comments can be made with either a (# comment.in)/(# comment.out) or (# skip)/(# label) pair.  See (info "script hash") for a detailed description of the available (#) commands.
+
+The (p5.scr.run) command accepts parameters, which your script can access using $1, $2, etc.  $0 is always set to the name of the script (as given to p5.scr.run).  You can use (# paramcount) to ensure that the proper number of parameters were given.
+
+Two scripts, startup.p5 and shutdown.p5, are executed when p5 stars and shuts down, respectively.  P5 will not start up if startup.p5 is not found, or if an error aborts startup.p5.
+
+To control error recovery, use the (# error) family of commands.  You can set them to ignore errors, abort on errors, or jump to a special error handling block.

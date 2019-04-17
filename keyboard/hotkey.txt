@@ -1,0 +1,18 @@
+=======================
+       hotkeys
+=======================
+
+Hotkeys are fairly self-explanatory.  You assign a hotkey, which consists of a virtual keycode and 0 or more modifiers, to a command, which will be executed when the hotkey is pressed.  Kb.hotkey.add adds hotkeys, and the kb.hotkey.del functions remove them.  Kb.hotkey.dump will output a list of all active hotkeys to the console.
+
+
+---------
+ example
+---------
+
+To make it so that when you hold control and shift and press 'n', notepad.exe is executed, you would put the following command in your startup script:
+
+(kb.hotkey.add "CS" (kb.vk "N") '(p5.util.propershell "notepad.exe"))
+
+The first parameter to kb.hotkey.add specifies the modifier keys that will be applied.  The characters C, S, A, and W translate to control, shift, alt, and windows (the key with the windows logo on it), respectively.  You can register a hotkey with no modifiers by specifying an empty string ("") for the first parameter.
+
+The kb.hotkey.add function returns an integer which can be used to identify the hotkey in a call to kb.hotkey.del.  It is not necessary to save or remember this value; hotkeys can also be deleted individually by specifying the same modifier string and virtual key to the kb.hokey.del function.
